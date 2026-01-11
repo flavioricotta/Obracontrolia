@@ -173,8 +173,8 @@ const ExpenseForm: React.FC = () => {
 
           setPreviewImages(prev => [...prev, base64]);
         }
-      } catch (error) {
-        alert("Não foi possível ler a nota fiscal. Tente novamente com uma foto mais clara.");
+      } catch (error: any) {
+        alert(error.message || "Não foi possível ler a nota fiscal.");
       } finally {
         setIsScanning(false);
       }
