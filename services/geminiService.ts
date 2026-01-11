@@ -1,9 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { Project, Expense, Category } from "../types";
 
-// Initialize the API client
+// Initialize the API client lazily
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+
+const getAiClient = () => {
+  if (!apiKey) {
+    throw new Error("API Key missing. Please configure VITE_GEMINI_API_KEY.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const generateProjectInsights = async (
   project: Project,
@@ -46,6 +52,7 @@ export const generateProjectInsights = async (
       Responda em texto corrido, formatado com Markdown, em português do Brasil. Seja direto e breve (máximo 3 parágrafos).
     `;
 
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-1.5-flash',
       contents: prompt,
@@ -94,6 +101,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
       }
     `;
 
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
@@ -145,6 +153,7 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
   `;
 
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
