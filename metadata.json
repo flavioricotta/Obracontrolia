@@ -1,0 +1,7 @@
+{
+  "name": "ObraControl AI",
+  "description": "Gerenciamento inteligente de gastos de obras com suporte a múltiplos projetos, linha do tempo e insights via IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
