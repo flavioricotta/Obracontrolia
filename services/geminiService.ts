@@ -1,8 +1,8 @@
-import { GoogleGenAI, SchemaType } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { Project, Expense, Category } from "../types";
 
 // Initialize the API client
-const apiKey = process.env.API_KEY || ''; 
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateProjectInsights = async (
@@ -60,7 +60,7 @@ export const generateProjectInsights = async (
 };
 
 export const classifyExpense = async (description: string): Promise<{ categoryId: number | null, reason: string }> => {
-    return { categoryId: null, reason: "Funcionalidade de auto-classificação será implementada na v2." };
+  return { categoryId: null, reason: "Funcionalidade de auto-classificação será implementada na v2." };
 }
 
 export interface ReceiptData {
@@ -77,7 +77,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
   try {
     // Clean the base64 string to get raw data
     const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
-    
+
     // Prepare list of categories for the model to choose from
     const categoryList = categories.map(c => c.name).join(", ");
 
@@ -110,7 +110,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
     // Sanitize and parse JSON
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const data = JSON.parse(jsonStr) as ReceiptData;
-    
+
     return data;
 
   } catch (error) {
