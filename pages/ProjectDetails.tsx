@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { api } from '../src/services/api';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
 import { TabGroup } from '../components/TabGroup';
@@ -39,23 +38,43 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
     createdAt: new Date().toISOString()
   });
 
-  const existingProject = useLiveQuery(() => id ? db.projects.get(Number(id)) : undefined, [id]);
+  // State for data
+  const [projectExpenses, setProjectExpenses] = useState<Expense[]>([]);
+  const [projectTasks, setProjectTasks] = useState<Task[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
-  // Queries
-  const projectExpenses = useLiveQuery(() =>
-    id ? db.expenses.where('projectId').equals(Number(id)).reverse().sortBy('date') : undefined
-    , [id]);
+  // Load Data
+  useEffect(() => {
+    if (id) {
+      loadProjectData();
+    }
+  }, [id]);
 
-  const projectTasks = useLiveQuery(() =>
-    id ? db.tasks.where('projectId').equals(Number(id)).reverse().sortBy('id') : undefined
-    , [id]);
+  const loadProjectData = async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const [proj, exp, tasks, cats] = await Promise.all([
+        api.projects.get(Number(id)),
+        api.expenses.list(Number(id)),
+        api.tasks.list(Number(id)),
+        api.categories.list()
+      ]);
 
-  const categories = useLiveQuery(() => db.categories.toArray());
+      if (proj) {
+        setFormData(proj); // Populate form if editing
+      }
+      setProjectExpenses(exp);
+      setProjectTasks(tasks);
+      setCategories(cats);
+    } catch (error) {
+      console.error("Error loading project data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Update form data when project loads
-  if (existingProject && formData.name === '' && !isNew) {
-    setFormData(existingProject);
-  }
+  const existingProject = formData.name ? formData : null; // Derived from loaded state
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -81,10 +100,10 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
     setLoading(true);
     try {
       if (isNew) {
-        await db.projects.add(formData);
+        await api.projects.create(formData);
         navigate('/');
       } else {
-        await db.projects.update(Number(id), formData);
+        await api.projects.update(Number(id), formData);
         setIsEditing(false);
       }
     } catch (error) {
@@ -97,11 +116,7 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
   const handleDelete = async () => {
     if (window.confirm('Tem certeza que deseja apagar este projeto e TODOS os seus gastos? Essa ação não pode ser desfeita.')) {
       try {
-        await db.transaction('rw', db.projects, db.expenses, db.tasks, async () => {
-          await db.expenses.where('projectId').equals(Number(id)).delete();
-          await db.tasks.where('projectId').equals(Number(id)).delete();
-          await db.projects.delete(Number(id));
-        });
+        await api.projects.delete(Number(id));
         navigate('/', { replace: true });
       } catch (e) {
         console.error("Erro ao deletar projeto", e);
@@ -114,7 +129,9 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
     e.stopPropagation();
     if (window.confirm('Apagar este gasto?')) {
       try {
-        await db.expenses.delete(expenseId);
+        await api.expenses.delete(expenseId);
+        // Refresh list locally
+        setProjectExpenses(prev => prev.filter(e => e.id !== expenseId));
       } catch (error) {
         console.error("Erro ao deletar gasto:", error);
       }
@@ -126,12 +143,12 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
     e.preventDefault();
     if (!newTaskTitle.trim() || !id) return;
     try {
-      await db.tasks.add({
+      const newTask = await api.tasks.create({
         projectId: Number(id),
         title: newTaskTitle,
-        isDone: false,
-        createdAt: new Date().toISOString()
+        isDone: false
       });
+      setProjectTasks(prev => [newTask, ...prev]);
       setNewTaskTitle('');
     } catch (error) {
       console.error("Erro ao criar tarefa", error);
@@ -140,7 +157,8 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
 
   const toggleTask = async (task: Task) => {
     try {
-      await db.tasks.update(task.id!, { isDone: !task.isDone });
+      await api.tasks.toggle(task.id!, !task.isDone);
+      setProjectTasks(prev => prev.map(t => t.id === task.id ? { ...t, isDone: !t.isDone } : t));
     } catch (error) {
       console.error("Erro ao atualizar tarefa", error);
     }
@@ -148,7 +166,8 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
 
   const deleteTask = async (taskId: number) => {
     try {
-      await db.tasks.delete(taskId);
+      await api.tasks.delete(taskId);
+      setProjectTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (error) {
       console.error("Erro ao deletar tarefa", error);
     }

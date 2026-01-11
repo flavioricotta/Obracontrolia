@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calculator as CalcIcon, Sparkles, Check, ShoppingBag, Send } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { api } from '../src/services/api';
 import { calculateMaterials, MaterialItem } from '../services/geminiService';
 
 interface CalculatorProps {
@@ -21,13 +20,17 @@ const Calculator: React.FC<CalculatorProps> = ({ isEmbedded = false }) => {
     const [results, setResults] = useState<MaterialItem[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<number>(Number(preSelectedProjectId) || 0);
 
-    const projects = useLiveQuery(() => db.projects.toArray());
+    const [projects, setProjects] = useState<any[]>([]);
 
-    // Set default project if available and not set
-    if (projects && projects.length > 0 && selectedProjectId === 0) {
-        if (preSelectedProjectId) setSelectedProjectId(Number(preSelectedProjectId));
-        else setSelectedProjectId(projects[0].id!);
-    }
+    useEffect(() => {
+        api.projects.list().then(projs => {
+            setProjects(projs);
+            if (projs.length > 0 && selectedProjectId === 0) {
+                if (preSelectedProjectId) setSelectedProjectId(Number(preSelectedProjectId));
+                else setSelectedProjectId(projs[0].id!);
+            }
+        });
+    }, [preSelectedProjectId]);
 
     const handleCalculate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,14 +55,16 @@ const Calculator: React.FC<CalculatorProps> = ({ isEmbedded = false }) => {
         }
 
         try {
-            const tasksToAdd = results.map(item => ({
-                projectId: selectedProjectId,
-                title: `Comprar: ${item.quantity} de ${item.name}`,
-                isDone: false,
-                createdAt: new Date().toISOString()
-            }));
+            // Sequential add to avoid overwhelming if many items
+            // Ideally we would have a bulkCreate in API, but loop is fine for < 20 items
+            for (const item of results) {
+                await api.tasks.create({
+                    projectId: selectedProjectId,
+                    title: `Comprar: ${item.quantity} de ${item.name}`,
+                    isDone: false
+                });
+            }
 
-            await db.tasks.bulkAdd(tasksToAdd);
             alert(`${results.length} itens adicionados à lista de tarefas!`);
             navigate(`/project/${selectedProjectId}`);
         } catch (error) {

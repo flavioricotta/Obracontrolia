@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { api } from '../../src/services/api';
 import { Product } from '../../types';
 import { Search, Plus, Edit2, Check, X, Tag, Package, Trash2 } from 'lucide-react';
 import { Button } from '../../components/Button';
@@ -31,9 +30,22 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
         storeId: currentUser
     });
 
-    const myProducts = useLiveQuery(() =>
-        db.products.where('storeId').equals(currentUser).reverse().toArray()
-        , [currentUser]);
+    const [myProducts, setMyProducts] = useState<Product[]>([]);
+
+    useEffect(() => {
+        loadProducts();
+    }, [currentUser]);
+
+    const loadProducts = async () => {
+        try {
+            const all = await api.products.list();
+            // Client side filter for storeId (simulated auth/store)
+            const mine = all.filter(p => p.storeId === currentUser);
+            setMyProducts(mine.reverse());
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     const filteredProducts = myProducts?.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -53,31 +65,41 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
         const numericPrice = parseFloat(tempPrice.replace(',', '.'));
         if (isNaN(numericPrice)) return;
 
-        await db.products.update(id, {
-            price: numericPrice,
-            lastUpdated: new Date().toISOString()
-        });
-        setEditingId(null);
+        try {
+            await api.products.update(id, {
+                price: numericPrice
+                // lastUpdated is auto in Supabase or we would send it
+            });
+            setEditingId(null);
+            loadProducts();
+        } catch (error) {
+            alert('Erro ao atualizar');
+        }
     };
 
     const handleAddProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newProduct.name || !newProduct.price) return;
 
-        await db.products.add({
-            ...newProduct as Product,
-            storeId: currentUser,
-            lastUpdated: new Date().toISOString()
-        });
+        try {
+            await api.products.create({
+                ...newProduct as any, // Cast because we initialized with partial
+                storeId: currentUser
+            });
 
-        setShowAddModal(false);
-        setNewProduct({ name: '', price: 0, unit: 'un', category: 'Geral', storeId: currentUser });
-        if (isAdding) navigate('/');
+            setShowAddModal(false);
+            setNewProduct({ name: '', price: 0, unit: 'un', category: 'Geral', storeId: currentUser });
+            if (isAdding) navigate('/');
+            loadProducts();
+        } catch (error) {
+            alert('Erro ao criar produto');
+        }
     };
 
     const handleDelete = async (id: number) => {
         if (confirm('Remover este produto do catálogo?')) {
-            await db.products.delete(id);
+            await api.products.delete(id);
+            loadProducts();
         }
     };
 

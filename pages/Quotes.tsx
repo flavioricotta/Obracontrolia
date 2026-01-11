@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ArrowLeft, ShoppingCart, MapPin, TrendingUp, ChevronRight, Store } from 'lucide-react';
 import { Card } from '../components/Card';
 import { IconButton } from '../components/IconButton';
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { api } from '../src/services/api';
 import { Product } from '../types';
 
 const Quotes: React.FC = () => {
    const navigate = useNavigate();
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
-   // Fetch products from Real DB
-   const allProducts = useLiveQuery(() => db.products.toArray());
+   useEffect(() => {
+      api.products.list().then(setAllProducts);
+   }, []);
 
    // Group products by name to show unique items in list
    // Note: In a real app, we would have a 'Master Product' list and 'Merchant Offers'. 

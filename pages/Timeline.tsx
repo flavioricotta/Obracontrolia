@@ -1,16 +1,34 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import React, { useState, useEffect } from 'react';
+import { api } from '../src/services/api';
 import { Card } from '../components/Card';
 import { FilterChip } from '../components/FilterChip';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ImageIcon } from 'lucide-react';
+import { Project, Category, Expense } from '../types';
 
 const Timeline: React.FC = () => {
-  const projects = useLiveQuery(() => db.projects.toArray());
-  const categories = useLiveQuery(() => db.categories.toArray());
-  const allExpenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().toArray());
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [p, c, e] = await Promise.all([
+          api.projects.list(),
+          api.categories.list(),
+          api.expenses.list()
+        ]);
+        setProjects(p);
+        setCategories(c);
+        setAllExpenses(e);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadData();
+  }, []);
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'all'>('all');
 

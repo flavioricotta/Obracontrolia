@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { api } from '../src/services/api';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
 import { Expense, PaymentStatus } from '../types';
@@ -15,12 +14,13 @@ const ExpenseForm: React.FC = () => {
   const preSelectedProjectId = searchParams.get('projectId');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
-  const projects = useLiveQuery(() => db.projects.toArray());
-  const categories = useLiveQuery(() => db.categories.toArray());
+  const [projects, setProjects] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   // Query existing expense if in edit mode
-  const existingExpense = useLiveQuery(() => id ? db.expenses.get(Number(id)) : undefined, [id]);
+  const [existingExpense, setExistingExpense] = useState<Expense | null>(null);
 
   const [formData, setFormData] = useState<Expense>({
     projectId: preSelectedProjectId ? Number(preSelectedProjectId) : 0,
@@ -40,6 +40,45 @@ const ExpenseForm: React.FC = () => {
 
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+
+  // Load config data (projects, categories)
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  // Load existing expense if editing
+  useEffect(() => {
+    if (id) {
+      api.expenses.list(undefined).then(all => {
+        // In a real optimized app we would have a specific get expense endpoint or filter, 
+        // but api.expenses.list currently returns user expenses. 
+        // Or better, add get to api.expenses.
+        // For now, let's just find it in the list or assume we need to implement get.
+        // Actually, let's assume we can fetch all and find, or assume list takes projectId option. 
+        // We'll trust we can find it if we implement specific get or just filter client side for now, 
+        // but for performance locally filtering is fine for small scale.
+        // Ideally we add get(id) to api.expenses.
+        const found = all.find(e => e.id === Number(id));
+        if (found) setExistingExpense(found);
+      });
+    }
+  }, [id]);
+
+  const loadConfig = async () => {
+    setLoadingConfig(true);
+    try {
+      const [projs, cats] = await Promise.all([
+        api.projects.list(),
+        api.categories.list()
+      ]);
+      setProjects(projs);
+      setCategories(cats);
+    } catch (error) {
+      console.error("Error loading config", error);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
 
   useEffect(() => {
     if (existingExpense) {
@@ -160,9 +199,9 @@ const ExpenseForm: React.FC = () => {
 
     try {
       if (id) {
-        await db.expenses.update(Number(id), formData);
+        await api.expenses.update(Number(id), formData);
       } else {
-        await db.expenses.add(formData);
+        await api.expenses.create(formData);
       }
 
       // Navigate back to project list
@@ -188,7 +227,7 @@ const ExpenseForm: React.FC = () => {
         const expenseId = Number(id);
         const targetProjectId = formData.projectId || existingExpense?.projectId;
 
-        await db.expenses.delete(expenseId);
+        await api.expenses.delete(expenseId);
 
         // Redirect explicitly to project page
         if (targetProjectId) {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '../components/Button';
 import { Database, Shield, User, Download, LogOut } from 'lucide-react';
-import { db } from '../db';
 
 interface SettingsProps {
   onLogout?: () => void;
@@ -11,18 +10,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
   const currentUser = localStorage.getItem('obra_user') || 'Usuário Local';
 
   const handleExport = async () => {
-    // Basic JSON export logic
-    const allData = {
-      projects: await db.projects.toArray(),
-      expenses: await db.expenses.toArray(),
-      categories: await db.categories.toArray(),
-    };
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_obracontrol_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
+    alert("Os dados agora são salvos na nuvem automaticamente.");
   };
 
   return (

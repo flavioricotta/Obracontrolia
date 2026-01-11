@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import { Project } from '../types';
+import { api } from '../src/services/api';
+import { Project, Expense } from '../types';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Building2, ChevronRight, TrendingUp, Calculator, Search, ShoppingCart } from 'lucide-react';
@@ -9,9 +8,30 @@ import { useNavigate } from 'react-router-dom';
 
 const ProjectList: React.FC = () => {
   const navigate = useNavigate();
-  const projects = useLiveQuery(() => db.projects.toArray());
-  const expenses = useLiveQuery(() => db.expenses.toArray());
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
   const [totalSpentAll, setTotalSpentAll] = useState(0);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [projectsData, expensesData] = await Promise.all([
+        api.projects.list(),
+        api.expenses.list()
+      ]);
+      setProjects(projectsData);
+      setExpenses(expensesData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (expenses) {
@@ -29,6 +49,10 @@ const ProjectList: React.FC = () => {
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
+
+  if (loading) {
+    return <div className="p-10 text-center text-slate-500">Carregando projetos...</div>;
+  }
 
   return (
     <div className="p-4 space-y-6">

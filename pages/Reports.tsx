@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import React, { useState, useEffect } from 'react';
+import { api } from '../src/services/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Building2, PieChart as PieIcon, Calculator as CalcIcon } from 'lucide-react';
 import Calculator from './Calculator';
 import { TabGroup } from '../components/TabGroup';
 import { Card } from '../components/Card';
+import { Project, Expense, Category } from '../types';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -15,11 +15,34 @@ const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('analytics');
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'all'>('all');
 
-  const projects = useLiveQuery(() => db.projects.toArray());
-  const categories = useLiveQuery(() => db.categories.toArray());
-  const expenses = useLiveQuery(() => db.expenses.toArray());
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!expenses || !categories || !projects) return <div>Carregando...</div>;
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [proj, exp, cat] = await Promise.all([
+        api.projects.list(),
+        api.expenses.list(),
+        api.categories.list()
+      ]);
+      setProjects(proj);
+      setExpenses(exp);
+      setCategories(cat);
+    } catch (error) {
+      console.error('Error loading reports data', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div>Carregando gráficos...</div>;
 
   const filteredExpenses = expenses.filter(e =>
     selectedProjectId === 'all' ? true : e.projectId === selectedProjectId
