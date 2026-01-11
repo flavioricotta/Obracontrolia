@@ -47,7 +47,7 @@ export const generateProjectInsights = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
     });
 
@@ -95,7 +95,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
@@ -113,9 +113,10 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
 
     return data;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao analisar recibo:", error);
-    throw new Error("Falha na leitura da imagem pela IA.");
+    // Include error message in throw to help debugging in production
+    throw new Error(`Falha na leitura: ${error.message || 'Erro desconhecido'}`);
   }
 };
 
