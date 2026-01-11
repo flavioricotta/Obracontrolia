@@ -95,7 +95,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
