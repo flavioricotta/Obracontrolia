@@ -193,10 +193,12 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
   const handleExportCSV = () => {
     if (!projectExpenses || !categories) return;
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Data;Categoria;Descricao;Fornecedor;Valor Pago;Status;Forma Pagamento\n";
+    csvContent += "Data;Categoria;Descricao;Fornecedor;Valor Pago;Status;Forma Pagamento;Comprovante\n";
 
     projectExpenses.forEach(exp => {
       const catName = categories.find(c => c.id === exp.categoryId)?.name || 'Outros';
+      const receiptLink = exp.receiptImages && exp.receiptImages.length > 0 ? exp.receiptImages[0] : "";
+
       const row = [
         format(parseISO(exp.date), 'dd/MM/yyyy'),
         catName,
@@ -204,7 +206,8 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
         `"${exp.supplier.replace(/"/g, '""')}"`,
         exp.amountPaid.toFixed(2).replace('.', ','),
         exp.status,
-        exp.paymentMethod
+        exp.paymentMethod,
+        `"${receiptLink}"`
       ].join(";");
       csvContent += row + "\n";
     });
