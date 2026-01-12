@@ -192,35 +192,95 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
 
   const handleExportCSV = () => {
     if (!projectExpenses || !categories) return;
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Data;Categoria;Descricao;Fornecedor;Valor Pago;Status;Forma Pagamento;Comprovante\n";
+
+    // Helper to format currency
+    const fmtMoney = (val: number) => val.toFixed(2).replace('.', ',');
+    // Helper to sanitize text
+    const sanitize = (txt: string) => `"${(txt || '').replace(/"/g, '""')}"`;
+    // Header Row
+    const headerRow = "Data;Categoria;Descricao;Fornecedor;Valor Pago;Status;Forma Pagamento;Comprovante";
+
+    // Separation Logic
+    const specializedKeywords = ['Especializada', 'Elétrica', 'Hidráulica'];
+
+    const laborCommon: Expense[] = [];
+    const laborSpecialized: Expense[] = [];
+    const others: Expense[] = [];
 
     projectExpenses.forEach(exp => {
-      const catName = categories.find(c => c.id === exp.categoryId)?.name || 'Outros';
-      let receiptLink = exp.receiptImages && exp.receiptImages.length > 0 ? exp.receiptImages[0] : "";
+      const cat = categories.find(c => c.id === exp.categoryId);
+      const catName = cat?.name || '';
+      const catType = cat?.type;
 
-      // Filter out Base64 images to keep CSV clean
-      if (receiptLink.startsWith('data:image')) {
-        receiptLink = "[Imagem antiga em Base64 - Visualização disponível apenas no App]";
+      // Logic: If type is LABOR -> check if specialized or not
+      if (catType === ExpenseType.LABOR) {
+        if (specializedKeywords.some(k => catName.includes(k))) {
+          laborSpecialized.push(exp);
+        } else {
+          laborCommon.push(exp);
+        }
+      } else {
+        others.push(exp);
       }
-
-      const row = [
-        format(parseISO(exp.date), 'dd/MM/yyyy'),
-        catName,
-        `"${exp.description.replace(/"/g, '""')}"`,
-        `"${exp.supplier.replace(/"/g, '""')}"`,
-        exp.amountPaid.toFixed(2).replace('.', ','),
-        exp.status,
-        exp.paymentMethod,
-        `"${receiptLink}"`
-      ].join(";");
-      csvContent += row + "\n";
     });
+
+    // Function to generate CSV block
+    const generateBlock = (title: string, data: Expense[]) => {
+      if (data.length === 0) return { csv: "", total: 0 };
+
+      let block = `\n${title.toUpperCase()};;;;;;;\n`; // Section Title
+      block += `${headerRow}\n`; // Header
+
+      let subtotal = 0;
+
+      data.forEach(exp => {
+        const catName = categories.find(c => c.id === exp.categoryId)?.name || 'Outros';
+        let receiptLink = exp.receiptImages && exp.receiptImages.length > 0 ? exp.receiptImages[0] : "";
+        if (receiptLink.startsWith('data:image')) receiptLink = "[Imagem Base64 - Ver no App]";
+
+        subtotal += exp.amountPaid;
+
+        const row = [
+          format(parseISO(exp.date), 'dd/MM/yyyy'),
+          sanitize(catName),
+          sanitize(exp.description),
+          sanitize(exp.supplier),
+          fmtMoney(exp.amountPaid),
+          exp.status,
+          exp.paymentMethod,
+          sanitize(receiptLink)
+        ].join(";");
+        block += row + "\n";
+      });
+
+      // Subtotal Row
+      block += `TOTAL ${title};;;;${fmtMoney(subtotal)};;;\n`;
+      block += ";;;;;;;\n"; // Empty line spacer
+      return { csv: block, total: subtotal };
+    };
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for Excel
+
+    const block1 = generateBlock("Mao de Obra (Pedreiro/Servente)", laborCommon);
+    const block2 = generateBlock("Mao de Obra Especializada", laborSpecialized);
+    const block3 = generateBlock("Materiais e Outros", others);
+
+    csvContent += block1.csv || "";
+    csvContent += block2.csv || "";
+    csvContent += block3.csv || "";
+
+    // Grand Total
+    const grandTotal = (block1.total || 0) + (block2.total || 0) + (block3.total || 0);
+    csvContent += `\nRESUMO GERAL;;;;;;;\n`;
+    csvContent += `Total M.O. Comum;;;;${fmtMoney(block1.total || 0)};;;\n`;
+    csvContent += `Total M.O. Espec.;;;;${fmtMoney(block2.total || 0)};;;\n`;
+    csvContent += `Total Outros;;;;${fmtMoney(block3.total || 0)};;;\n`;
+    csvContent += `TOTAL FINAL DA OBRA;;;;${fmtMoney(grandTotal)};;;\n`;
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Contabilidade_${formData.name.replace(/\s+/g, '_')}.csv`);
+    link.setAttribute("download", `Contabilidade_${formData.name.replace(/\s+/g, '_')}_DETALHADO.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
