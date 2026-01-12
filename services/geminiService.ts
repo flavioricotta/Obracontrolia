@@ -11,25 +11,7 @@ const getAiClient = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// Debug helper to list models if 404 occurs
-const logAvailableModels = async () => {
-  try {
-    // For the standard SDK, we need to import GoogleGenerativeAI (already done)
-    // But there isn't a direct listModels on the instance in 0.21.0+?
-    // Actually we can use the API url directly since the SDK might abstract it.
-    // Let's try a direct fetch to the API to be 100% unsure SDK isn't hiding things.
-    console.log("⚠️ Tentando listar modelos via fetch direto...");
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    const data = await response.json();
-    console.log("📋 MODELOS DISPONÍVEIS (RAW FETCH):", data);
 
-    // @ts-ignore
-    const names = data.models?.map((m: any) => m.name.replace('models/', '')) || [];
-    console.log("✅ Use um destes nomes exatos:", names);
-  } catch (e) {
-    console.error("Falha ao listar modelos para debug:", e);
-  }
-};
 
 export const generateProjectInsights = async (
   project: Project,
@@ -73,7 +55,7 @@ export const generateProjectInsights = async (
     `;
 
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -82,10 +64,7 @@ export const generateProjectInsights = async (
 
   } catch (error: any) {
     console.error("Erro ao gerar insights:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
-    return "Ocorreu um erro ao consultar a IA. Verifique o console (F12) para detalhes.";
+    return "Ocorreu um erro ao consultar a IA. Verifique sua conexão ou chave de API.";
   }
 };
 
@@ -125,7 +104,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
     `;
 
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const result = await model.generateContent([
       prompt,
@@ -149,9 +128,6 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
 
   } catch (error: any) {
     console.error("Erro ao analisar recibo:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
     // Include error message in throw to help debugging in production
     throw new Error(`Falha na leitura: ${error.message || 'Erro desconhecido'}`);
   }
@@ -183,7 +159,7 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
 
   try {
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text() || "[]";
@@ -192,9 +168,6 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
     return JSON.parse(jsonStr) as MaterialItem[];
   } catch (error: any) {
     console.error("Erro na calculadora:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
     return [];
   }
 };
