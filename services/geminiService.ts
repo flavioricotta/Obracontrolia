@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Project, Expense, Category } from "../types";
 
 // Initialize the API client lazily
@@ -8,22 +8,7 @@ const getAiClient = () => {
   if (!apiKey) {
     throw new Error("API Key missing. Please configure VITE_GEMINI_API_KEY.");
   }
-  return new GoogleGenAI({ apiKey });
-};
-
-// Debug helper to list models if 404 occurs
-const logAvailableModels = async () => {
-  try {
-    const ai = getAiClient();
-    const response = await ai.models.list();
-    console.log("📋 MODELOS DISPONÍVEIS (DEBUG):", response);
-    // Try to find reasonable models
-    // @ts-ignore
-    const names = response.models?.map(m => m.name) || [];
-    console.log("Lista de Nomes:", names);
-  } catch (e) {
-    console.error("Falha ao listar modelos para debug:", e);
-  }
+  return new GoogleGenerativeAI(apiKey);
 };
 
 export const generateProjectInsights = async (
@@ -67,20 +52,17 @@ export const generateProjectInsights = async (
       Responda em texto corrido, formatado com Markdown, em português do Brasil. Seja direto e breve (máximo 3 parágrafos).
     `;
 
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-001',
-      contents: prompt,
-    });
+    const genAI = getAiClient();
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    return response.text || "Não foi possível gerar insights no momento.";
+    return text || "Não foi possível gerar insights no momento.";
 
   } catch (error: any) {
     console.error("Erro ao gerar insights:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
-    return "Ocorreu um erro ao consultar a IA. Verifique o console (F12) para detalhes.";
+    return "Ocorreu um erro ao consultar a IA. Verifique sua conexão ou chave de API.";
   }
 };
 
@@ -119,18 +101,21 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
       }
     `;
 
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-001',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: prompt }
-        ]
-      }
-    });
+    const genAI = getAiClient();
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const text = response.text;
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: "image/jpeg",
+        },
+      },
+    ]);
+    const response = await result.response;
+    const text = response.text();
+
     if (!text) return null;
 
     // Sanitize and parse JSON
@@ -141,9 +126,6 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
 
   } catch (error: any) {
     console.error("Erro ao analisar recibo:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
     // Include error message in throw to help debugging in production
     throw new Error(`Falha na leitura: ${error.message || 'Erro desconhecido'}`);
   }
@@ -174,20 +156,16 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
   `;
 
   try {
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-001',
-      contents: prompt,
-    });
+    const genAI = getAiClient();
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text() || "[]";
 
-    const text = response.text || "[]";
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(jsonStr) as MaterialItem[];
   } catch (error: any) {
     console.error("Erro na calculadora:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-      await logAvailableModels();
-    }
     return [];
   }
 };
