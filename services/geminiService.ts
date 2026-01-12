@@ -11,6 +11,21 @@ const getAiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+// Debug helper to list models if 404 occurs
+const logAvailableModels = async () => {
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.list();
+    console.log("📋 MODELOS DISPONÍVEIS (DEBUG):", response);
+    // Try to find reasonable models
+    // @ts-ignore
+    const names = response.models?.map(m => m.name) || [];
+    console.log("Lista de Nomes:", names);
+  } catch (e) {
+    console.error("Falha ao listar modelos para debug:", e);
+  }
+};
+
 export const generateProjectInsights = async (
   project: Project,
   expenses: Expense[],
@@ -54,15 +69,18 @@ export const generateProjectInsights = async (
 
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-1.5-flash-001',
       contents: prompt,
     });
 
     return response.text || "Não foi possível gerar insights no momento.";
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao gerar insights:", error);
-    return "Ocorreu um erro ao consultar a IA. Verifique sua conexão ou chave de API.";
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      await logAvailableModels();
+    }
+    return "Ocorreu um erro ao consultar a IA. Verifique o console (F12) para detalhes.";
   }
 };
 
@@ -103,7 +121,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
 
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-1.5-flash-001',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
@@ -123,6 +141,9 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
 
   } catch (error: any) {
     console.error("Erro ao analisar recibo:", error);
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      await logAvailableModels();
+    }
     // Include error message in throw to help debugging in production
     throw new Error(`Falha na leitura: ${error.message || 'Erro desconhecido'}`);
   }
@@ -155,15 +176,18 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
   try {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-1.5-flash-001',
       contents: prompt,
     });
 
     const text = response.text || "[]";
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(jsonStr) as MaterialItem[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro na calculadora:", error);
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      await logAvailableModels();
+    }
     return [];
   }
 };
