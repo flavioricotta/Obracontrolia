@@ -4,7 +4,7 @@ import { api } from '../src/services/api';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
 import { Expense, PaymentStatus } from '../types';
-import { ArrowLeft, Camera, X, Plus, Trash2, ScanLine, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Camera, X, Plus, Trash2, ScanLine, Loader2, Sparkles, Download } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
 import { supabase } from '../src/supabase';
 
@@ -477,15 +477,27 @@ const ExpenseForm: React.FC = () => {
 
           <div className="grid grid-cols-3 gap-2">
             {previewImages.map((img, index) => (
-              <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
+              <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group">
                 <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+
+                {/* Delete Button */}
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-red-500 transition-colors"
+                  className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-red-500 transition-colors z-10"
                 >
                   <X size={14} />
                 </button>
+
+                {/* Download Button */}
+                <a
+                  href={img}
+                  download={`comprovante_${Date.now()}.jpg`}
+                  className="absolute bottom-1 right-1 bg-black/60 text-white p-1.5 rounded-full hover:bg-blue-500 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download size={14} />
+                </a>
               </div>
             ))}
 
