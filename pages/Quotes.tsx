@@ -1,29 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowLeft, ShoppingCart, MapPin, TrendingUp, ChevronRight, Store } from 'lucide-react';
+import { Search, ArrowLeft, ShoppingCart, MapPin, TrendingUp, ChevronRight, Store as StoreIcon, Phone } from 'lucide-react';
 import { Card } from '../components/Card';
 import { IconButton } from '../components/IconButton';
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../src/services/api';
-import { Product } from '../types';
+import { supabase } from '../src/supabase';
+import { Product, Store } from '../types';
+
+// Haversine formula to calculate distance in km
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+   const R = 6371; // Earth radius in km
+   const dLat = (lat2 - lat1) * Math.PI / 180;
+   const dLon = (lon2 - lon1) * Math.PI / 180;
+   const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 
 const Quotes: React.FC = () => {
    const navigate = useNavigate();
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
    const [allProducts, setAllProducts] = useState<Product[]>([]);
+   const [stores, setStores] = useState<Record<string, Store>>({});
+   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
    useEffect(() => {
+      // Get user location
+      navigator.geolocation?.getCurrentPosition(
+         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+         () => { } // Silent fail if denied
+      );
+
+      // Load products and stores
       api.products.list().then(setAllProducts);
+      supabase.from('stores').select('*').eq('is_active', true).then(({ data }) => {
+         if (data) {
+            const storeMap: Record<string, Store> = {};
+            data.forEach(s => { storeMap[s.user_id] = s as unknown as Store; });
+            setStores(storeMap);
+         }
+      });
    }, []);
 
    // Group products by name to show unique items in list
-   // Note: In a real app, we would have a 'Master Product' list and 'Merchant Offers'. 
-   // Here we simulate by just listing unique names.
    const uniqueProducts = Array.from(new Set(allProducts?.map(p => p.name)))
-      .map(name => {
-         return allProducts?.find(p => p.name === name);
-      }).filter(Boolean) as Product[];
+      .map(name => allProducts?.find(p => p.name === name))
+      .filter(Boolean) as Product[];
 
    const filteredProducts = uniqueProducts.filter(m =>
       m.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -34,6 +59,12 @@ const Quotes: React.FC = () => {
 
    const handleProductClick = (product: Product) => {
       setSelectedProduct(product);
+   };
+
+   const getStoreDistance = (store: Store): string => {
+      if (!userLocation || !store.latitude || !store.longitude) return '—';
+      const dist = calculateDistance(userLocation.lat, userLocation.lng, store.latitude, store.longitude);
+      return dist.toFixed(1) + ' km';
    };
 
    // --- RENDER: DETAILS VIEW (OFFERS LIST) ---
@@ -78,19 +109,37 @@ const Quotes: React.FC = () => {
                {offers.map((offer, index) => {
                   const isCheapest = index === 0;
                   const diffPercent = ((offer.price - bestPrice) / bestPrice) * 100;
+                  const store = stores[offer.storeId];
+                  const storeName = store?.name || offer.storeId.replace('_', ' ');
+                  const storePhone = store?.phone;
+                  const distance = store ? getStoreDistance(store) : '—';
 
                   return (
                      <Card key={offer.id} className={`p-4 flex flex-col ${isCheapest ? 'border-green-500 border-2 shadow-md' : ''}`}>
                         <div className="flex justify-between items-start mb-2">
                            <div className="flex items-center gap-3">
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-slate-100 text-slate-600`}>
-                                 <Store size={20} />
+                                 <StoreIcon size={20} />
                               </div>
                               <div>
-                                 <h4 className="font-bold text-slate-800 capitalize">{offer.storeId.replace('_', ' ')}</h4>
-                                 <div className="flex items-center text-xs text-slate-400">
-                                    <MapPin size={10} className="mr-1" />
-                                    2.5km {/* Simulado */}
+                                 <h4 className="font-bold text-slate-800 capitalize">{storeName}</h4>
+                                 <div className="flex items-center gap-2 text-xs text-slate-400">
+                                    <span className="flex items-center">
+                                       <MapPin size={10} className="mr-1" />
+                                       {distance}
+                                    </span>
+                                    {storePhone && (
+                                       <a
+                                          href={`https://wa.me/55${storePhone.replace(/\D/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center text-green-600 hover:underline"
+                                          onClick={(e) => e.stopPropagation()}
+                                       >
+                                          <Phone size={10} className="mr-1" />
+                                          WhatsApp
+                                       </a>
+                                    )}
                                  </div>
                               </div>
                            </div>

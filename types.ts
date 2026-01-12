@@ -79,3 +79,21 @@ export interface DashboardStats {
   percentageUsed: number;
   costPerSqMeter: number;
 }
+
+export interface Store {
+  id?: number;
+  userId?: string;
+  name: string;
+  cnpj?: string;
+  phone: string;
+  email?: string;
+  address: string;
+  city: string;
+  state?: string;
+  zipCode?: string;
+  latitude?: number;
+  longitude?: number;
+  logoUrl?: string;
+  isActive?: boolean;
+  createdAt?: string;
+}

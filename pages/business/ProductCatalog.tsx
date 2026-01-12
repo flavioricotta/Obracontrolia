@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../src/services/api';
+import { supabase } from '../../src/supabase';
 import { Product } from '../../types';
-import { Search, Plus, Edit2, Check, X, Tag, Package, Trash2 } from 'lucide-react';
+import { Search, Plus, Edit2, Check, X, Tag, Package, Trash2, Store as StoreIcon, UserCircle } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { IconButton } from '../../components/IconButton';
 import { FilterChip } from '../../components/FilterChip';
@@ -20,6 +21,8 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [tempPrice, setTempPrice] = useState<string>('');
     const [showAddModal, setShowAddModal] = useState(isAdding);
+    const [hasStoreProfile, setHasStoreProfile] = useState<boolean | null>(null);
+    const [storeName, setStoreName] = useState<string>('');
 
     // New Product State
     const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -33,8 +36,39 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     const [myProducts, setMyProducts] = useState<Product[]>([]);
 
     useEffect(() => {
-        loadProducts();
-    }, [currentUser]);
+        checkStoreProfile();
+    }, []);
+
+    useEffect(() => {
+        if (hasStoreProfile === true) {
+            loadProducts();
+        }
+    }, [hasStoreProfile, currentUser]);
+
+    const checkStoreProfile = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                navigate('/login');
+                return;
+            }
+
+            const { data: store, error } = await supabase
+                .from('stores')
+                .select('name')
+                .eq('user_id', user.id)
+                .single();
+
+            if (store && store.name) {
+                setHasStoreProfile(true);
+                setStoreName(store.name);
+            } else {
+                setHasStoreProfile(false);
+            }
+        } catch (error) {
+            setHasStoreProfile(false);
+        }
+    };
 
     const loadProducts = async () => {
         try {
@@ -106,16 +140,47 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
+    // Loading state
+    if (hasStoreProfile === null) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            </div>
+        );
+    }
+
+    // Profile incomplete - show onboarding
+    if (hasStoreProfile === false) {
+        return (
+            <div className="p-6 flex flex-col items-center justify-center min-h-[80vh] text-center">
+                <div className="bg-gradient-to-br from-amber-100 to-orange-100 p-6 rounded-full mb-6">
+                    <StoreIcon className="text-amber-600" size={56} />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Complete seu Perfil</h1>
+                <p className="text-slate-500 mb-6 max-w-xs">
+                    Para aparecer no marketplace e receber contatos de clientes, preencha os dados da sua loja.
+                </p>
+                <Button size="lg" onClick={() => navigate('/business/profile')}>
+                    <UserCircle size={20} className="mr-2" />
+                    Cadastrar Loja
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <div className="p-4 mb-20 space-y-6">
             <header className="pt-2 flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Meu Catálogo</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">{storeName || 'Meu Catálogo'}</h1>
                     <p className="text-sm text-slate-500">Gerencie seus produtos e preços</p>
                 </div>
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700">
-                    {currentUser.charAt(0).toUpperCase()}
-                </div>
+                <IconButton
+                    icon={UserCircle}
+                    onClick={() => navigate('/business/profile')}
+                    label="Editar Perfil"
+                    className="bg-slate-100"
+                />
             </header>
 
             {/* Stats Cards */}
@@ -213,96 +278,100 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
                         </div>
                     </div>
                 ))}
-                {filteredProducts?.length === 0 && (
-                    <div className="text-center py-10 text-slate-400">
-                        <Package size={48} className="mx-auto mb-2 opacity-50" />
-                        <p>Nenhum produto encontrado</p>
-                    </div>
-                )}
-            </div>
+                {
+                    filteredProducts?.length === 0 && (
+                        <div className="text-center py-10 text-slate-400">
+                            <Package size={48} className="mx-auto mb-2 opacity-50" />
+                            <p>Nenhum produto encontrado</p>
+                        </div>
+                    )
+                }
+            </div >
 
             {/* Add Product Modal (Simple overlay) */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-fade-in">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold">Novo Produto</h3>
-                            <IconButton
-                                icon={X}
-                                onClick={() => { setShowAddModal(false); if (isAdding) navigate('/'); }}
-                                label="Fechar"
-                                className="bg-slate-100"
-                            />
-                        </div>
-
-                        <form onSubmit={handleAddProduct} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Nome do Produto</label>
-                                <input
-                                    required
-                                    className="w-full p-3 border border-slate-300 rounded-xl"
-                                    placeholder="Ex: Cimento CP II"
-                                    value={newProduct.name}
-                                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+            {
+                showAddModal && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-fade-in">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold">Novo Produto</h3>
+                                <IconButton
+                                    icon={X}
+                                    onClick={() => { setShowAddModal(false); if (isAdding) navigate('/'); }}
+                                    label="Fechar"
+                                    className="bg-slate-100"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleAddProduct} className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Preço (R$)</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">Nome do Produto</label>
                                     <input
                                         required
-                                        type="number"
-                                        step="0.01"
-                                        className="w-full p-3 border border-slate-300 rounded-xl font-bold"
-                                        placeholder="0.00"
-                                        value={newProduct.price || ''}
-                                        onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
+                                        className="w-full p-3 border border-slate-300 rounded-xl"
+                                        placeholder="Ex: Cimento CP II"
+                                        value={newProduct.name}
+                                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Unidade</label>
-                                    <select
-                                        className="w-full p-3 border border-slate-300 rounded-xl bg-white"
-                                        value={newProduct.unit}
-                                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                                    >
-                                        <option value="un">Unidade</option>
-                                        <option value="kg">Kg</option>
-                                        <option value="saco">Saco</option>
-                                        <option value="m">Metro</option>
-                                        <option value="m²">m²</option>
-                                        <option value="m³">m³</option>
-                                        <option value="lata">Lata</option>
-                                        <option value="litro">Litro</option>
-                                        <option value="milheiro">Milheiro</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Categoria</label>
-                                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                    {['Geral', 'Estrutura', 'Acabamento', 'Elétrica', 'Hidráulica', 'Pintura'].map(cat => (
-                                        <FilterChip
-                                            key={cat}
-                                            label={cat}
-                                            isActive={newProduct.category === cat}
-                                            onClick={() => setNewProduct({ ...newProduct, category: cat })}
-                                            variant="dark"
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">Preço (R$)</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            step="0.01"
+                                            className="w-full p-3 border border-slate-300 rounded-xl font-bold"
+                                            placeholder="0.00"
+                                            value={newProduct.price || ''}
+                                            onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
                                         />
-                                    ))}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">Unidade</label>
+                                        <select
+                                            className="w-full p-3 border border-slate-300 rounded-xl bg-white"
+                                            value={newProduct.unit}
+                                            onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                                        >
+                                            <option value="un">Unidade</option>
+                                            <option value="kg">Kg</option>
+                                            <option value="saco">Saco</option>
+                                            <option value="m">Metro</option>
+                                            <option value="m²">m²</option>
+                                            <option value="m³">m³</option>
+                                            <option value="lata">Lata</option>
+                                            <option value="litro">Litro</option>
+                                            <option value="milheiro">Milheiro</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <Button type="submit" fullWidth className="bg-black text-white hover:bg-gray-900 mt-2">
-                                Adicionar ao Catálogo
-                            </Button>
-                        </form>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">Categoria</label>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                        {['Geral', 'Estrutura', 'Acabamento', 'Elétrica', 'Hidráulica', 'Pintura'].map(cat => (
+                                            <FilterChip
+                                                key={cat}
+                                                label={cat}
+                                                isActive={newProduct.category === cat}
+                                                onClick={() => setNewProduct({ ...newProduct, category: cat })}
+                                                variant="dark"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <Button type="submit" fullWidth className="bg-black text-white hover:bg-gray-900 mt-2">
+                                    Adicionar ao Catálogo
+                                </Button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
