@@ -23,6 +23,7 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     const [showAddModal, setShowAddModal] = useState(isAdding);
     const [hasStoreProfile, setHasStoreProfile] = useState<boolean | null>(null);
     const [storeName, setStoreName] = useState<string>('');
+    const [userId, setUserId] = useState<string | null>(null);
 
     // New Product State
     const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -40,10 +41,10 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     }, []);
 
     useEffect(() => {
-        if (hasStoreProfile === true) {
+        if (hasStoreProfile === true && userId) {
             loadProducts();
         }
-    }, [hasStoreProfile, currentUser]);
+    }, [hasStoreProfile, userId]);
 
     const checkStoreProfile = async () => {
         try {
@@ -52,6 +53,9 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
                 navigate('/login');
                 return;
             }
+
+            // Store the actual Supabase user ID for product operations
+            setUserId(user.id);
 
             const { data: store, error } = await supabase
                 .from('stores')
@@ -71,10 +75,11 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
     };
 
     const loadProducts = async () => {
+        if (!userId) return;
         try {
             const all = await api.products.list();
-            // Client side filter for storeId (simulated auth/store)
-            const mine = all.filter(p => p.storeId === currentUser);
+            // Filter by actual Supabase user ID
+            const mine = all.filter(p => p.storeId === userId);
             setMyProducts(mine.reverse());
         } catch (error) {
             console.error(error);
@@ -113,16 +118,16 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
 
     const handleAddProduct = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newProduct.name || !newProduct.price) return;
+        if (!newProduct.name || !newProduct.price || !userId) return;
 
         try {
             await api.products.create({
-                ...newProduct as any, // Cast because we initialized with partial
-                storeId: currentUser
+                ...newProduct as any,
+                storeId: userId  // Use Supabase user ID
             });
 
             setShowAddModal(false);
-            setNewProduct({ name: '', price: 0, unit: 'un', category: 'Geral', storeId: currentUser });
+            setNewProduct({ name: '', price: 0, unit: 'un', category: 'Geral', storeId: userId });
             if (isAdding) navigate('/');
             loadProducts();
         } catch (error) {

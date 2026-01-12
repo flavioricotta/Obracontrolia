@@ -56,6 +56,13 @@ const StoreProfile: React.FC = () => {
                     zipCode: store.zip_code || '',
                     latitude: store.latitude,
                     longitude: store.longitude,
+                    // Enhanced fields
+                    description: store.description || '',
+                    openingHours: store.opening_hours || '',
+                    deliveryOptions: store.delivery_options || [],
+                    paymentMethods: store.payment_methods || [],
+                    instagram: store.instagram || '',
+                    facebook: store.facebook || '',
                 });
             }
         } catch (error) {
@@ -122,6 +129,13 @@ const StoreProfile: React.FC = () => {
                 latitude: formData.latitude || null,
                 longitude: formData.longitude || null,
                 is_active: true,
+                // Enhanced fields
+                description: formData.description || null,
+                opening_hours: formData.openingHours || null,
+                delivery_options: formData.deliveryOptions || [],
+                payment_methods: formData.paymentMethods || [],
+                instagram: formData.instagram || null,
+                facebook: formData.facebook || null,
             };
 
             const { error } = await supabase
@@ -311,6 +325,123 @@ const StoreProfile: React.FC = () => {
                             )}
                             {formData.latitude ? 'Atualizar' : 'Capturar'}
                         </Button>
+                    </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-200 my-4"></div>
+                <h2 className="text-lg font-bold text-slate-700">Informações Adicionais</h2>
+
+                {/* Description */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Sobre a Loja
+                    </label>
+                    <textarea
+                        name="description"
+                        value={formData.description || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Descreva sua loja, especialidades, diferenciais..."
+                        className="w-full p-3 border border-slate-300 rounded-xl resize-none"
+                        rows={3}
+                    />
+                </div>
+
+                {/* Opening Hours */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Horário de Funcionamento
+                    </label>
+                    <input
+                        name="openingHours"
+                        value={formData.openingHours || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, openingHours: e.target.value }))}
+                        placeholder="Ex: Seg-Sex 8h-18h, Sáb 8h-12h"
+                        className="w-full p-3 border border-slate-300 rounded-xl"
+                    />
+                </div>
+
+                {/* Delivery Options */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                        Opções de Entrega
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                        {['Retirada', 'Entrega Própria', 'Motoboy', 'Frete Terceiro'].map(opt => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                    const current = formData.deliveryOptions || [];
+                                    const updated = current.includes(opt)
+                                        ? current.filter(o => o !== opt)
+                                        : [...current, opt];
+                                    setFormData(prev => ({ ...prev, deliveryOptions: updated }));
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${(formData.deliveryOptions || []).includes(opt)
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                            >
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Payment Methods */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                        Formas de Pagamento
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                        {['Pix', 'Dinheiro', 'Cartão Crédito', 'Cartão Débito', 'Boleto'].map(pay => (
+                            <button
+                                key={pay}
+                                type="button"
+                                onClick={() => {
+                                    const current = formData.paymentMethods || [];
+                                    const updated = current.includes(pay)
+                                        ? current.filter(p => p !== pay)
+                                        : [...current, pay];
+                                    setFormData(prev => ({ ...prev, paymentMethods: updated }));
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${(formData.paymentMethods || []).includes(pay)
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                            >
+                                {pay}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Social Media */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                            Instagram
+                        </label>
+                        <input
+                            name="instagram"
+                            value={formData.instagram || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+                            placeholder="@sualojanoinsta"
+                            className="w-full p-3 border border-slate-300 rounded-xl"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                            Facebook
+                        </label>
+                        <input
+                            name="facebook"
+                            value={formData.facebook || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, facebook: e.target.value }))}
+                            placeholder="facebook.com/sualoja"
+                            className="w-full p-3 border border-slate-300 rounded-xl"
+                        />
                     </div>
                 </div>
 

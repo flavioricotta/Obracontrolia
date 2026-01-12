@@ -96,4 +96,11 @@ export interface Store {
   logoUrl?: string;
   isActive?: boolean;
   createdAt?: string;
+  // Enhanced fields
+  description?: string;
+  openingHours?: string;
+  deliveryOptions?: string[];
+  paymentMethods?: string[];
+  instagram?: string;
+  facebook?: string;
 }
