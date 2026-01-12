@@ -197,7 +197,12 @@ const ProjectDetails: React.FC<Props> = ({ isNew = false }) => {
 
     projectExpenses.forEach(exp => {
       const catName = categories.find(c => c.id === exp.categoryId)?.name || 'Outros';
-      const receiptLink = exp.receiptImages && exp.receiptImages.length > 0 ? exp.receiptImages[0] : "";
+      let receiptLink = exp.receiptImages && exp.receiptImages.length > 0 ? exp.receiptImages[0] : "";
+
+      // Filter out Base64 images to keep CSV clean
+      if (receiptLink.startsWith('data:image')) {
+        receiptLink = "[Imagem antiga em Base64 - Visualização disponível apenas no App]";
+      }
 
       const row = [
         format(parseISO(exp.date), 'dd/MM/yyyy'),
