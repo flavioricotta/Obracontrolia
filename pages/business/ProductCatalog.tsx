@@ -356,7 +356,19 @@ const ProductCatalog: React.FC<Props> = ({ isAdding = false }) => {
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 mb-1">Categoria</label>
                                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                        {['Geral', 'Estrutura', 'Acabamento', 'Elétrica', 'Hidráulica', 'Pintura'].map(cat => (
+                                        {[
+                                            'Geral',
+                                            'Elétrica',
+                                            'Hidráulica',
+                                            'Pintura',
+                                            'Estrutura',
+                                            'Acabamento',
+                                            'Ferramentas',
+                                            'Portas/Janelas',
+                                            'Pisos/Revestimentos',
+                                            'Telhado',
+                                            'Segurança'
+                                        ].map(cat => (
                                             <FilterChip
                                                 key={cat}
                                                 label={cat}

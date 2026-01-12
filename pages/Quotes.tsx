@@ -164,7 +164,12 @@ const Quotes: React.FC = () => {
                            <span className="text-xs text-slate-400">
                               Atualizado: {new Date(offer.lastUpdated).toLocaleDateString()}
                            </span>
-                           <Button variant="ghost" size="sm" className="text-xs font-bold text-primary flex items-center hover:underline px-2">
+                           <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs font-bold text-primary flex items-center hover:underline px-2"
+                              onClick={() => navigate(`/store/${offer.storeId}`)}
+                           >
                               Ver loja <ChevronRight size={12} className="ml-1" />
                            </Button>
                         </div>
