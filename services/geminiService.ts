@@ -55,7 +55,7 @@ export const generateProjectInsights = async (
     `;
 
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -104,7 +104,7 @@ export const analyzeReceipt = async (imageBase64: string, categories: Category[]
     `;
 
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const result = await model.generateContent([
       prompt,
@@ -159,7 +159,7 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
 
   try {
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text() || "[]";
