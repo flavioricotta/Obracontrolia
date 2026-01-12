@@ -7,6 +7,7 @@ import { Expense, PaymentStatus } from '../types';
 import { ArrowLeft, Camera, X, Plus, Trash2, ScanLine, Loader2, Sparkles, Download } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
 import { supabase } from '../src/supabase';
+import { compressImage } from '../src/utils/imageCompression';
 
 // Helper to upload file to Supabase Storage
 const uploadToSupabase = async (file: File): Promise<string> => {
@@ -158,10 +159,12 @@ const ExpenseForm: React.FC = () => {
       const localPreviews = newFiles.map(file => URL.createObjectURL(file));
       setPreviewImages(prev => [...prev, ...localPreviews]);
 
-      // Upload in background
+      // Compress and upload in background
       try {
         for (const file of newFiles) {
-          const publicUrl = await uploadToSupabase(file);
+          // Compress to WebP format (60-80% size reduction)
+          const compressedFile = await compressImage(file);
+          const publicUrl = await uploadToSupabase(compressedFile);
           newImages.push(publicUrl);
         }
 
