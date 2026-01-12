@@ -6,6 +6,25 @@ import { IconButton } from '../components/IconButton';
 import { Expense, PaymentStatus } from '../types';
 import { ArrowLeft, Camera, X, Plus, Trash2, ScanLine, Loader2, Sparkles } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
+import { supabase } from '../src/supabase';
+
+// Helper to upload file to Supabase Storage
+const uploadToSupabase = async (file: File): Promise<string> => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('receipts')
+    .upload(filePath, file);
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data } = supabase.storage.from('receipts').getPublicUrl(filePath);
+  return data.publicUrl;
+};
 
 const ExpenseForm: React.FC = () => {
   const navigate = useNavigate();
@@ -125,21 +144,35 @@ const ExpenseForm: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+
+  // ... inside component
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach((file: File) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          setPreviewImages(prev => [...prev, base64]);
-          setFormData(prev => ({
-            ...prev,
-            receiptImages: [...(prev.receiptImages || []), base64]
-          }));
-        };
-        reader.readAsDataURL(file);
-      });
+      const newImages: string[] = [];
+      const newFiles = Array.from(files);
+
+      // Optimistically show local preview immediately using object URL (faster than base64)
+      const localPreviews = newFiles.map(file => URL.createObjectURL(file));
+      setPreviewImages(prev => [...prev, ...localPreviews]);
+
+      // Upload in background
+      try {
+        for (const file of newFiles) {
+          const publicUrl = await uploadToSupabase(file);
+          newImages.push(publicUrl);
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          receiptImages: [...(prev.receiptImages || []), ...newImages]
+        }));
+      } catch (error) {
+        console.error("Upload failed", error);
+        alert("Erro ao fazer upload da imagem. Tente novamente.");
+      }
     }
   };
 
@@ -149,37 +182,46 @@ const ExpenseForm: React.FC = () => {
 
     setIsScanning(true);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
+    try {
+      // 1. Convert to Base64 ONLY for Gemini Analysis (AI needs the raw bytes/base64)
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
 
-      try {
-        const result = await analyzeReceipt(base64, categories);
+        try {
+          // 2. Analyze with Gemini
+          const result = await analyzeReceipt(base64, categories);
 
-        if (result) {
-          // Find matching category ID by name
-          const matchedCategory = categories.find(c => c.name === result.categoryName);
+          // 3. Upload original file to Storage for persistence
+          const publicUrl = await uploadToSupabase(file);
 
-          setFormData(prev => ({
-            ...prev,
-            amountPaid: result.amount,
-            date: result.date || prev.date,
-            supplier: result.supplier,
-            description: result.description,
-            categoryId: matchedCategory ? matchedCategory.id! : prev.categoryId,
-            // Also add the image to the list
-            receiptImages: [...(prev.receiptImages || []), base64]
-          }));
+          if (result) {
+            const matchedCategory = categories.find(c => c.name === result.categoryName);
 
-          setPreviewImages(prev => [...prev, base64]);
+            setFormData(prev => ({
+              ...prev,
+              amountPaid: result.amount,
+              date: result.date || prev.date,
+              supplier: result.supplier,
+              description: result.description,
+              categoryId: matchedCategory ? matchedCategory.id! : prev.categoryId,
+              receiptImages: [...(prev.receiptImages || []), publicUrl] // Save URL to form
+            }));
+
+            setPreviewImages(prev => [...prev, publicUrl]);
+          }
+        } catch (error: any) {
+          alert(error.message || "Não foi possível ler a nota fiscal.");
+        } finally {
+          setIsScanning(false);
         }
-      } catch (error: any) {
-        alert(error.message || "Não foi possível ler a nota fiscal.");
-      } finally {
-        setIsScanning(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(file);
+
+    } catch (error) {
+      console.error(error);
+      setIsScanning(false);
+    }
   };
 
   const removeImage = (index: number) => {
