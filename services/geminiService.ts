@@ -145,21 +145,39 @@ export const calculateMaterials = async (userPrompt: string): Promise<MaterialIt
   if (!apiKey) throw new Error("API Key missing");
 
   const prompt = `
-    Você é um engenheiro civil experiente e orçamentista.
-    O usuário vai descrever uma tarefa de construção. 
-    Calcule a lista de materiais necessários com uma margem de segurança de 10%.
+    Atue como um Engenheiro Civil Sênior e Orçamentista Especialista.
     
-    Entrada do usuário: "${userPrompt}"
+    TAREFA:
+    Com base na solicitação do usuário: "${userPrompt}", elabore uma LISTA TÉCNICA COMPLETA DE MATERIAIS.
     
-    Retorne APENAS um array JSON puro (sem markdown) com os objetos:
-    [{ "name": "Nome do Material", "quantity": "Quantidade + Unidade", "estimatedPrice": "Preço Estimado Unitário em R$ (apenas número)" }]
+    REGRAS CRÍTICAS PARA A LISTA:
+    1.  **Completude**: Não liste apenas o óbvio. Inclua itens auxiliares essenciais (ex: buchas, parafusos, vedantes, lixas, fitas, cola, pregos). Se for pintura, inclua rolos e proteção.
+    2.  **Especificidade**: Use nomes técnicos e completos (ex: "Cimento CP-II" em vez de "Cimento"; "Parafuso GN 25mm" em vez de "Parafuso").
+    3.  **Margem de Perda**: Já inclua automaticamente 10% de margem de segurança nas quantidades onde aplicável.
+    4.  **Preço**: Estime o PREÇO UNITÁRIO MÉDIO DE MERCADO NO BRASIL (em Reais).
     
-    Exemplo: [{ "name": "Cimento CP II", "quantity": "5 sacos", "estimatedPrice": "35.00" }]
+    FORMATO DE RESPOSTA (JSON PURO):
+    Retorne APENAS um array JSON (sem markdown, sem \`\`\`json, sem texto antes ou depois).
+    
+    Schema do Objeto JSON:
+    {
+      "name": "Nome Técnico Completo do Material",
+      "quantity": "Quantidade numérica + Unidade (ex: 5 sacos, 12 metros, 2 latas)",
+      "estimatedPrice": "Preço Unitário (apenas números, ponto como decimal, ex: 35.50)"
+    }
   `;
 
   try {
     const genAI = getAiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-flash-latest",
+      generationConfig: {
+        temperature: 0.1,
+        topP: 0.95,
+        topK: 40,
+        responseMimeType: "application/json",
+      }
+    });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text() || "[]";

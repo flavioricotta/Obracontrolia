@@ -3,7 +3,7 @@ import { api } from '../src/services/api';
 import { Project, Expense } from '../types';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { Building2, ChevronRight, TrendingUp, Calculator, Search, ShoppingCart } from 'lucide-react';
+import { Building2, ChevronRight, TrendingUp, Calculator, Search, ShoppingCart, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProjectList: React.FC = () => {
@@ -56,9 +56,17 @@ const ProjectList: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6">
-      <header className="pt-2">
-        <h1 className="text-2xl font-bold text-primary">Meus Projetos</h1>
-        <p className="text-sm text-slate-500">Controle total das suas obras</p>
+      <header className="pt-2 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Meus Projetos</h1>
+          <p className="text-sm text-slate-500">Controle total das suas obras</p>
+        </div>
+        <button
+          onClick={() => navigate('/settings')}
+          className="p-2 text-slate-400 hover:text-primary transition-colors"
+        >
+          <Settings size={24} />
+        </button>
       </header>
 
       {/* Global Summary Card */}

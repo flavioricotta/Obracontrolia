@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, PlusCircle, Calendar, Settings, PieChart, Store, List, UserCircle } from 'lucide-react';
+import { Home, PlusCircle, Calendar, Settings, PieChart, Store, List, UserCircle, CheckSquare } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface NavigationProps {
@@ -11,10 +11,10 @@ export const Navigation: React.FC<NavigationProps> = ({ userType = 'client' }) =
   const path = location.pathname;
 
   const isActive = (p: string) => {
-      // Simple logic to highlight active tab
-      if (p === '/' && path === '/') return true;
-      if (p !== '/' && path.startsWith(p)) return true;
-      return false;
+    // Simple logic to highlight active tab
+    if (p === '/' && path === '/') return true;
+    if (p !== '/' && path.startsWith(p)) return true;
+    return false;
   };
 
   const clientNavItems = [
@@ -22,7 +22,7 @@ export const Navigation: React.FC<NavigationProps> = ({ userType = 'client' }) =
     { icon: PieChart, label: 'Orçamento', path: '/reports' },
     { icon: PlusCircle, label: 'Obra', path: '/project/new', highlight: true },
     { icon: Calendar, label: 'Tempo', path: '/timeline' },
-    { icon: Settings, label: 'Ajustes', path: '/settings' },
+    { icon: CheckSquare, label: 'Etapas', path: '/stages' },
   ];
 
   const businessNavItems = [
@@ -41,11 +41,10 @@ export const Navigation: React.FC<NavigationProps> = ({ userType = 'client' }) =
           <Link
             key={item.label}
             to={item.path}
-            className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-              isActive(item.path) 
-                ? (userType === 'business' ? 'text-black' : 'text-accent') 
-                : 'text-slate-400'
-            }`}
+            className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive(item.path)
+              ? (userType === 'business' ? 'text-black' : 'text-accent')
+              : 'text-slate-400'
+              }`}
           >
             {item.highlight ? (
               <div className={`${userType === 'business' ? 'bg-black' : 'bg-primary'} rounded-full p-2.5 -mt-6 shadow-lg border-4 border-slate-50`}>
