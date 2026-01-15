@@ -1,23 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { User, MapPin, TrendingUp, Phone, Mail, Package } from 'lucide-react';
+import { User, MapPin, TrendingUp, Phone, Mail, Package, RefreshCw, MessageCircle } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { api } from '../../src/services/api';
-import { Project } from '../../types';
+import { Project, Product } from '../../types';
+import { supabase } from '../../src/supabase';
 
 const ClientInsights: React.FC = () => {
     const [clients, setClients] = useState<Project[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadClients();
+        loadData();
     }, []);
 
-    const loadClients = async () => {
+    const loadData = async () => {
+        setLoading(true);
         try {
-            const data = await api.projects.list();
-            setClients(data);
+            const [projectsData, productsData] = await Promise.all([
+                api.projects.list(),
+                api.products.list()
+            ]);
+
+            // Filter products for the current user's store
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const myProducts = productsData.filter(p => p.storeId === user.id);
+                setProducts(myProducts);
+            }
+
+            setClients(projectsData);
         } catch (error) {
-            console.error('Error loading clients:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
@@ -25,6 +39,13 @@ const ClientInsights: React.FC = () => {
 
     const getOpportunity = (stage?: string) => {
         if (!stage) return 'Oferecer projetos e consultoria inicial.';
+
+        // Smart Matching
+        const matchingProduct = products.find(p => p.category === stage);
+
+        if (matchingProduct) {
+            return `Oferta Sugerida: ${matchingProduct.name} por ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(matchingProduct.price)}`;
+        }
 
         const lower = stage.toLowerCase();
         if (lower.includes('fundação')) return 'Ofertar Cimento, Aço, Brita e Areia.';
@@ -37,15 +58,36 @@ const ClientInsights: React.FC = () => {
         return 'Entrar em contato para entender a fase atual.';
     };
 
+    const sendWhatsAppOffer = (client: Project) => {
+        const stage = client.currentStage || 'Início';
+        const matchingProduct = products.find(p => p.category === stage);
+        const productText = matchingProduct
+            ? `${matchingProduct.name} por ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(matchingProduct.price)}`
+            : 'nossos produtos';
+
+        const message = `Olá ${client.name}, vi que sua obra está na etapa de ${stage}. Temos uma oferta especial de ${productText} para você!`;
+        const encoded = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    };
+
     if (loading) {
         return <div className="p-10 text-center text-slate-500">Carregando insights...</div>;
     }
 
     return (
         <div className="p-4 space-y-6 pb-24">
-            <header className="pt-2">
-                <h1 className="text-2xl font-bold text-slate-900">Insights de Clientes</h1>
-                <p className="text-sm text-slate-500">Oportunidades de venda baseadas no progresso das obras</p>
+            <header className="pt-2 flex justify-between items-start">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Insights de Clientes</h1>
+                    <p className="text-sm text-slate-500">Oportunidades de venda baseadas no progresso das obras</p>
+                </div>
+                <button
+                    onClick={loadData}
+                    className="p-2 text-slate-400 hover:text-primary transition-colors hover:bg-slate-100 rounded-full"
+                    title="Atualizar lista"
+                >
+                    <RefreshCw size={20} />
+                </button>
             </header>
 
             {/* Summary Cards */}
@@ -97,17 +139,16 @@ const ClientInsights: React.FC = () => {
                                     <TrendingUp size={16} className="text-green-600" />
                                     <span className="text-xs font-bold text-green-700">Sugestão da IA</span>
                                 </div>
-                                <p className="text-sm text-slate-700">{getOpportunity(client.currentStage)}</p>
+                                <p className="text-sm text-slate-700 font-medium">{getOpportunity(client.currentStage)}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="secondary" size="sm" className="w-full">
-                                    <Phone size={16} className="mr-2" />
-                                    Ligar
-                                </Button>
-                                <Button variant="secondary" size="sm" className="w-full">
-                                    <Mail size={16} className="mr-2" />
-                                    Email
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button
+                                    onClick={() => sendWhatsAppOffer(client)}
+                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white border-none shadow-sm transition-colors"
+                                >
+                                    <MessageCircle size={18} className="mr-2" />
+                                    Enviar Oferta no WhatsApp
                                 </Button>
                             </div>
                         </div>
