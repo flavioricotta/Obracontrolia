@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, PlusCircle, Calendar, Settings, PieChart, Store, List, UserCircle, CheckSquare } from 'lucide-react';
+import { Home, PlusCircle, Calendar, Settings, PieChart, Store, List, UserCircle, CheckSquare, Lightbulb } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface NavigationProps {
@@ -27,7 +27,7 @@ export const Navigation: React.FC<NavigationProps> = ({ userType = 'client' }) =
 
   const businessNavItems = [
     { icon: Store, label: 'Catálogo', path: '/' }, // Catalog is home for business
-    { icon: List, label: 'Pedidos', path: '/business/orders' }, // Future placeholder
+    { icon: Lightbulb, label: 'Insights', path: '/business/insights' },
     { icon: PlusCircle, label: 'Produto', path: '/business/products/new', highlight: true },
     { icon: UserCircle, label: 'Perfil', path: '/settings' },
   ];

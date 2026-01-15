@@ -15,6 +15,7 @@ import ProductCatalog from './pages/business/ProductCatalog';
 import StoreProfile from './pages/business/StoreProfile';
 import StoreDetails from './pages/StoreDetails';
 import Stages from './pages/Stages';
+import ClientInsights from './pages/business/ClientInsights';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -82,6 +83,7 @@ const App: React.FC = () => {
               <Route path="/business/profile" element={<StoreProfile />} />
               <Route path="/business/catalog" element={<ProductCatalog />} />
               <Route path="/business/products/new" element={<ProductCatalog isAdding />} />
+              <Route path="/business/insights" element={<ClientInsights />} />
               <Route path="/business/orders" element={<div className="p-10 text-center text-slate-500">Módulo de Pedidos em Breve</div>} />
             </>
           )}
