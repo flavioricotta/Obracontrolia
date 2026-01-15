@@ -81,8 +81,8 @@ const ClientInsights: React.FC = () => {
                                         <p className="text-xs text-slate-500">Orçamento: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(client.budget)}</p>
                                     </div>
                                 </div>
-                                <div className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
-                                    {client.currentStage || 'Início'}
+                                <div className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
+                                    Etapa: {client.currentStage || 'Início'}
                                 </div>
                             </div>
 
