@@ -368,5 +368,16 @@ export const api = {
             const { error } = await supabase.from('products').delete().eq('id', id);
             if (error) throw error;
         }
+    },
+
+    checkout: {
+        createPreference: async (items: { title: string, quantity: number, unit_price: number }[], payer: { name: string, email: string }) => {
+            const { data, error } = await supabase.functions.invoke('create-preference', {
+                body: { items, payer }
+            });
+
+            if (error) throw error;
+            return data;
+        }
     }
 };

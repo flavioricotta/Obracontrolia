@@ -70,6 +70,40 @@ const ClientInsights: React.FC = () => {
         window.open(`https://wa.me/?text=${encoded}`, '_blank');
     };
 
+    const generatePaymentLink = async (client: Project) => {
+        const stage = client.currentStage || 'Início';
+        const matchingProduct = products.find(p => p.category === stage);
+
+        if (!matchingProduct) {
+            alert('Nenhum produto correspondente encontrado para gerar link.');
+            return;
+        }
+
+        try {
+            const preference = await api.checkout.createPreference(
+                [{
+                    title: matchingProduct.name,
+                    quantity: 1,
+                    unit_price: matchingProduct.price
+                }],
+                {
+                    name: client.name,
+                    email: 'cliente@exemplo.com' // Idealmente viria do cadastro do cliente
+                }
+            );
+
+            if (preference && preference.init_point) {
+                const msg = `Link de Pagamento gerado com sucesso!\n\n${preference.init_point}`;
+                alert(msg);
+                // Opcional: Copiar para área de transferência ou abrir
+                window.open(preference.init_point, '_blank');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao gerar link de pagamento.');
+        }
+    };
+
     if (loading) {
         return <div className="p-10 text-center text-slate-500">Carregando insights...</div>;
     }
@@ -142,13 +176,20 @@ const ClientInsights: React.FC = () => {
                                 <p className="text-sm text-slate-700 font-medium">{getOpportunity(client.currentStage)}</p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 <Button
                                     onClick={() => sendWhatsAppOffer(client)}
-                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white border-none shadow-sm transition-colors"
+                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white border-none shadow-sm transition-colors text-xs"
                                 >
-                                    <MessageCircle size={18} className="mr-2" />
-                                    Enviar Oferta no WhatsApp
+                                    <MessageCircle size={16} className="mr-1" />
+                                    WhatsApp
+                                </Button>
+                                <Button
+                                    onClick={() => generatePaymentLink(client)}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm transition-colors text-xs"
+                                >
+                                    <MessageCircle size={16} className="mr-1" />
+                                    Gerar Link
                                 </Button>
                             </div>
                         </div>
