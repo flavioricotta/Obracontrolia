@@ -27,7 +27,9 @@ export const api = {
                 sqMeters: Number(p.sq_meters),
                 type: p.type,
                 notes: p.notes,
-                createdAt: p.created_at
+                createdAt: p.created_at,
+                completedStages: p.completed_stages || [],
+                currentStage: p.current_stage
             }));
         },
 
@@ -51,7 +53,9 @@ export const api = {
                 sqMeters: Number(data.sq_meters),
                 type: data.type,
                 notes: data.notes,
-                createdAt: data.created_at
+                createdAt: data.created_at,
+                completedStages: data.completed_stages || [],
+                currentStage: data.current_stage
             };
         },
 
@@ -83,7 +87,9 @@ export const api = {
                 sqMeters: Number(data.sq_meters),
                 type: data.type,
                 notes: data.notes,
-                createdAt: data.created_at
+                createdAt: data.created_at,
+                completedStages: data.completed_stages || [],
+                currentStage: data.current_stage
             };
         },
 
@@ -97,6 +103,9 @@ export const api = {
             if (project.sqMeters) updateData.sq_meters = project.sqMeters;
             if (project.type) updateData.type = project.type;
             if (project.notes) updateData.notes = project.notes;
+            if (project.completedStages) updateData.completed_stages = project.completedStages;
+            if (project.currentStage) updateData.current_stage = project.currentStage;
+
 
             const { error } = await supabase
                 .from('projects')

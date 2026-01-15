@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, Info } from 'lucide-react';
+import { api } from '../src/services/api';
 
 const STAGES = [
     { id: 1, title: 'Planejamento e Projetos', description: 'Definição arquitetônica e aprovação legal.' },
@@ -14,28 +15,76 @@ const STAGES = [
 
 const Stages: React.FC = () => {
     const [completedStages, setCompletedStages] = useState<number[]>([]);
+    const [projectId, setProjectId] = useState<number | null>(null);
     const [notification, setNotification] = useState<string | null>(null);
 
     useEffect(() => {
-        const saved = localStorage.getItem('obra_stages_completed');
-        if (saved) {
-            setCompletedStages(JSON.parse(saved));
-        }
+        loadProjectData();
     }, []);
 
-    const toggleStage = (id: number) => {
+    const loadProjectData = async () => {
+        try {
+
+
+            const projects = await api.projects.list();
+            if (projects && projects.length > 0) {
+                const activeProject = projects[0]; // Use the most recent project
+                setProjectId(activeProject.id!);
+                if (activeProject.completedStages) {
+                    setCompletedStages(activeProject.completedStages);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading stages:', error);
+        }
+    };
+
+    const toggleStage = async (id: number) => {
+        if (!projectId) {
+            showNotification('Nenhum projeto encontrado para salvar.');
+            return;
+        }
+
         let newCompleted;
         const isCompleting = !completedStages.includes(id);
 
+
+
         if (isCompleting) {
             newCompleted = [...completedStages, id];
-            showNotification(`Etapa "${STAGES.find(s => s.id === id)?.title}" concluída! Insights enviados para parceiros.`);
+            const stageName = STAGES.find(s => s.id === id)?.title;
+            const currentStage = STAGES.find(s => s.id === Math.max(...newCompleted))?.title;
+
+            showNotification(`Etapa "${stageName}" concluída! Insights enviados para parceiros.`);
+
+            // Update DB
+            try {
+                await api.projects.update(projectId, {
+                    completedStages: newCompleted,
+                    currentStage: currentStage
+                });
+            } catch (err) {
+                console.error('Error saving stage:', err);
+                showNotification('Erro ao salvar etapa.');
+                return; // Don't update local state if failed? Or optimistic update? Let's optimistic.
+            }
         } else {
             newCompleted = completedStages.filter(s => s !== id);
+            const currentStage = newCompleted.length > 0
+                ? STAGES.find(s => s.id === Math.max(...newCompleted))?.title
+                : 'Início';
+
+            try {
+                await api.projects.update(projectId, {
+                    completedStages: newCompleted,
+                    currentStage: currentStage
+                });
+            } catch (err) {
+                console.error('Error saving stage:', err);
+            }
         }
 
         setCompletedStages(newCompleted);
-        localStorage.setItem('obra_stages_completed', JSON.stringify(newCompleted));
     };
 
     const showNotification = (msg: string) => {
@@ -75,8 +124,8 @@ const Stages: React.FC = () => {
                             key={stage.id}
                             onClick={() => toggleStage(stage.id)}
                             className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center gap-4 ${isDone
-                                    ? 'bg-green-50 border-green-200 shadow-sm'
-                                    : 'bg-white border-slate-100 hover:border-primary/50'
+                                ? 'bg-green-50 border-green-200 shadow-sm'
+                                : 'bg-white border-slate-100 hover:border-primary/50'
                                 }`}
                         >
                             <div className={`p-2 rounded-full ${isDone ? 'text-green-600 bg-green-100' : 'text-slate-300 bg-slate-50'}`}>

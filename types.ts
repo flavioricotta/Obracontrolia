@@ -24,6 +24,8 @@ export interface Project {
   type: string;
   notes?: string;
   createdAt: string;
+  completedStages?: number[];
+  currentStage?: string;
 }
 
 export interface Category {
