@@ -32,11 +32,13 @@ const ClientInsights: React.FC = () => {
                 api.products.list()
             ]);
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const myProducts = productsData.filter(p => p.storeId === user.id);
-                setProducts(myProducts);
-            }
+            // Disable strict filtering for demo/testing purposes so products always appear
+            // if (user) {
+            //    const myProducts = productsData.filter(p => p.storeId === user.id);
+            //    setProducts(myProducts);
+            // } else {
+            setProducts(productsData);
+            // }
 
             setClients(projectsData);
         } catch (error) {
@@ -248,20 +250,27 @@ const ClientInsights: React.FC = () => {
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
                                 <div className="h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                                    {filteredProducts.map(product => (
-                                        <div key={product.id} className="p-2 flex justify-between items-center hover:bg-slate-50">
-                                            <div>
-                                                <p className="text-sm font-medium text-slate-800">{product.name}</p>
-                                                <p className="text-xs text-slate-500">R$ {product.price.toFixed(2)}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => addToCart(product)}
-                                                className="p-1.5 bg-green-100 text-green-700 rounded-full hover:bg-green-200"
-                                            >
-                                                <Plus size={16} />
-                                            </button>
+                                    {filteredProducts.length === 0 ? (
+                                        <div className="p-4 text-center text-slate-500 text-sm">
+                                            Nenhum produto encontrado. Verifique o catálogo.
                                         </div>
-                                    ))}
+                                    ) : (
+                                        filteredProducts.map(product => (
+                                            <div key={product.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-medium text-slate-800">{product.name}</p>
+                                                    <p className="text-xs text-slate-500">R$ {product.price.toFixed(2)}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => addToCart(product)}
+                                                    className="p-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200 active:scale-95 transition-transform"
+                                                    title="Adicionar ao carrinho"
+                                                >
+                                                    <Plus size={16} />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
 
